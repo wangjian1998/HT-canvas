@@ -1,0 +1,68 @@
+{
+  "node0": {
+    "id": null,
+    "x": null,
+    "y": null,
+    "name": "节点"
+  },
+  "node1": {
+    "id": null,
+    "x": null,
+    "y": null,
+    "name": "站点",
+    "value": 1,
+    "otherValue": 1,
+    "options": [
+      {"label": "空闲站点", "value": 1},
+      {"label": "充电站点", "value": 2},
+      {"label": "工作站点", "value": 3},
+      {"label": "禁用站点", "value": 4}
+    ],
+    "otherOptions": [
+      {"label": "反向入库", "value": 1},
+      {"label": "正向入库", "value": 2},
+      {"label": "左移入库", "value": 3},
+      {"label": "右移入库", "value": 4}
+    ]
+  },
+  "mag_point": {
+    "id": null,
+    "x": null,
+    "y": null,
+    "name": "磁钉点",
+    "magInterval": 300,
+    "value": 1,
+    "options": [
+      {"label": "双磁钉", "value": 1},
+      {"label": "单磁钉", "value": 2}
+    ]
+  },
+  "action_point": {
+    "id": null,
+    "x": null,
+    "y": null,
+    "name": "功能点",
+    "value": "1",
+    "options": [
+      {"label": "停止", "value": "1"},
+      {"label": "停止并定时启动", "value": "2"},
+      {"label": "速度设置", "value": "3"},
+      {"label": "举升", "value": "4"},
+      {"label": "降落", "value": "5"},
+      {"label": "上料", "value": "6"},
+      {"label": "下料", "value": "7"},
+      {"label": "左上料", "value": "8"},
+      {"label": "右上料", "value": "9"},
+      {"label": "左下料", "value": "10"},
+      {"label": "右下料", "value": "11"},
+      {"label": "牵引销0下降|1上升", "value": "12"},
+      {"label": "手动信号复位", "value": "13"},
+      {"label": "等待按钮按下", "value": "14"},
+      {"label": "进入自动工位前确认", "value": "15"},
+      {"label": "自动移载", "value": "16"},
+      {"label": "自动涂胶", "value": "17"},
+      {"label": "自动蒙皮", "value": "18"},
+      {"label": "忽略任务路径功能点", "value": "19"}
+    ]
+  }
+}

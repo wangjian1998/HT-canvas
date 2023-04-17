@@ -1,0 +1,37 @@
+{
+  "line": {
+    "segmentId": null,
+    "segmentName": "",
+    "length": null,
+    "directionality": 0,
+    "startNodeId": null,
+    "endNodeId": null,
+    "maxSpeed": 300
+  },
+
+  "arcLine": {
+    "segmentId": null,
+    "segmentName": "",
+    "length": null,
+    "directionality": 0,
+    "startNodeId": null,
+    "endNodeId": null,
+    "maxSpeed": 300,
+    "rotAngle": null,
+    "isClockwiseDirection": 1
+  },
+
+  "quaLine": {
+    "segmentId": null,
+    "segmentName": "",
+    "length": null,
+    "directionality": false,
+    "startNodeId": null,
+    "endNodeId": null,
+    "maxSpeed": 300,
+    "control1X": null,
+    "control1Y": null,
+    "control2X": null,
+    "control2Y": null
+  }
+}
