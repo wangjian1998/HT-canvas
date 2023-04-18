@@ -1,8 +1,9 @@
+<!-- eslint-disable complexity -->
 <template>
   <div class="content">
     <div class="wrapper">
       <div id="canvas-wrapper" class="left">
-        <canvas id="canvas" style="background-color:#f0f2f5"></canvas>
+        <canvas id="canvas"></canvas>
         <div id="coor"></div>
         <toor-bar
           :toorbar="toorbar"
@@ -18,44 +19,6 @@
         <el-button @click="saveSite">保存地图</el-button>
         </div>
         <div class="infor" id="add-content">
-          <!-- <el-form label-width="100px">
-            <el-form-item label="点位ID:">
-                <el-input v-model="addInfor.id" disabled></el-input>
-              </el-form-item>
-            <el-form-item label="x坐标:">
-                <el-input v-model="addInfor.x" :disabled="!disabledSave"></el-input>
-              </el-form-item>
-              <el-form-item label="y坐标:">
-                <el-input v-model="addInfor.y" :disabled="!disabledSave"></el-input>
-              </el-form-item>
-              <el-form-item label="名称:">
-                <el-input v-model="addInfor.name" :disabled="!disabledSave"></el-input>
-              </el-form-item>
-              <el-form-item label="磁钉点间距:" v-if="addInfor.magInterval">
-                <el-input v-model="addInfor.magInterval" :disabled="!disabledSave"></el-input>
-              </el-form-item>
-              <el-form-item label="类型:" v-if="addInfor.value">
-                <el-select v-model="addInfor.value" :disabled="!disabledSave">
-                  <el-option
-                    v-for="item in addInfor.options"
-                    :key="item.value"
-                    :label="item.label"
-                    :value="item.value">
-                  </el-option>
-                </el-select>
-              </el-form-item>
-              <el-form-item label="处理模式:" v-if="addInfor.otherValue">
-                <el-select v-model="addInfor.otherValue" :disabled="!disabledSave">
-                  <el-option
-                    v-for="item in addInfor.otherOptions"
-                    :key="item.value"
-                    :label="item.label"
-                    :value="item.value">
-                  </el-option>
-                </el-select>
-              </el-form-item>
-          </el-form> -->
-
           <site-form v-if="!showMegmentInfo" :addInfor1="addInfor" :disabledSave="disabledSave"></site-form>
           <segment-form v-if="showMegmentInfo" :addInfor1="megmentInfo" :disabledSave="disabledSave"></segment-form>
           <div class="operate">
@@ -63,12 +26,6 @@
           </div>
         </div>
       </div>
-
-      <!-- <div @click="toggleInfo" class="icon-arrow" :style="{right: showInfo ? '20%' : '0'}">
-        <i v-show="showInfo" class="el-icon-arrow-right"></i>
-        <i v-show="!showInfo" class="el-icon-arrow-left"></i>
-      </div> -->
-      
     </div>
     <el-dialog title="批量增加点位" :visible.sync="dialogFormVisible">
       <Dialog 
@@ -87,6 +44,7 @@
 <script>
 import Operate from '../separateInstall/operate'
 import drawSence from '@/views/separateInstall/path'
+import {getBezierT, getThreeBezierPoint} from './bezier'
 import ToorBar from '@/components/toor-bar/toor-bar.vue'
 import Dialog from './cpns/dialog.vue'
 import SiteForm from './cpns/siteForm.vue'
@@ -142,6 +100,7 @@ export default {
       dialogFormVisible: false, // 批量增加dialog
       arcLength: 0, // 弧长
       arcArr: [], // 关于弧线的数组
+      bezierArr: [] // 关于贝塞尔曲线的数组
     }
   },
 
@@ -204,6 +163,11 @@ export default {
             this.sence.drawLine(item.startX, item.startY, item.endX, item.endY, item.flag ?? false)
           } else if (item.type === 2) {
             this.getArcLine(item.startX, item.startY, item.endX, item.endY, item.rotAngle, item.isClockwiseDirection === 0 ? true : false)
+          } 
+          else if (item.type === 3) {
+            this.sence.drawbezierCurve(item.startX, item.startY, item.control1X, item.control1Y, item.control2X, item.control2Y, item.endX, item.endY)
+
+            this.bezierArr.push({startPoint: {x1: item.startX, y1: item.startY}, endPoint: {x2: item.endX, y2: item.endY}, control1: {cx1: item.control1X, cy1: item.control1Y}, control2: {cx2: item.control2X, cy2: item.control2Y}})
           }
 
 
@@ -219,6 +183,19 @@ export default {
       this.isEdit = true
       this.disabledSave = true
       this.canvas.addEventListener('mousedown', this.onMousedown)
+      // 如果是编辑贝塞尔曲线，可以在画布上更改控制点位置
+      // if (this.megmentInfo.type === 3) {
+      //   this.sence.drawArc(this.megmentInfo.control1X, this.megmentInfo.control1Y, 5, 0, 2 * Math.PI)
+      //   this.sence.drawArc(this.megmentInfo.control2X, this.megmentInfo.control2Y, 5, 0, 2 * Math.PI)
+      //   if (this.x >= this.megmentInfo.control1X - 5 && this.x <= this.megmentInfo.control1X + 5 && this.y >= this.megmentInfo.control1Y - 5 && this.y <= this.megmentInfo.control1Y + 5) {
+      //     this.canvas.addEventListener('mousedown', this.onQuadratic)
+      //   }
+        
+      // }
+    },
+
+    onQuadratic() {
+      console.log('hhh')
     },
 
     // // 批量增加
@@ -275,18 +252,18 @@ export default {
       }
       if (data.type === -2) {
         this.isLine = !this.isLine
-        this.lineType = 0
         if (this.isLine) {
           this.lineType = data.lineType
           this.canvas.addEventListener('mousedown', this.onMousedown)
           this.operate.destory()
         } else {
+          this.lineType = 0
           this.operate.reset()
           // this.canvas.addEventListener('mousedown', this.operate.onMousedown1)
           this.canvas.removeEventListener('mousemove', this.onMousemove)
           this.canvas.removeEventListener('mouseup', this.onMouseup)
         }
-        
+        console.log(this.lineType)
       }
       else if(data.type === -1) {
         this.isGrid = !this.isGrid
@@ -400,6 +377,15 @@ export default {
           this.siteObj.segmentInfos = this.siteObj.segmentInfos.map(item =>{
             if (item.segmentId === this.megmentInfo.segmentId) {
               item = Object.assign(item, {segmentName: this.megmentInfo.segmentName, directionality: this.megmentInfo.directionality ? 1 : 0, isClockwiseDirection: this.megmentInfo.isClockwiseDirection ? 1 : 0, maxSpeed: this.megmentInfo.maxSpeed, rotAngle: this.megmentInfo.rotAngle})
+            }
+            return item
+          })
+          console.log(this.siteObj.segmentInfos)
+        }
+        if (this.lineType === 3) {
+          this.siteObj.segmentInfos = this.siteObj.segmentInfos.map(item =>{
+            if (item.segmentId === this.megmentInfo.segmentId) {
+              item = Object.assign(item, {segmentName: this.megmentInfo.segmentName, directionality: this.megmentInfo.directionality ? 1 : 0, maxSpeed: this.megmentInfo.maxSpeed, control1X: this.megmentInfo.control1X, control1Y: this.megmentInfo.control1Y, control2X: this.megmentInfo.control2X, control2Y: this.megmentInfo.control2Y})
             }
             return item
           })
@@ -586,6 +572,7 @@ export default {
         if ((this.startNode || this.startNode === 0) && (this.endNode || this.endNode === 0)) { // 画线时选择的两个端点必须是点位
           // this.sence.drawLine(this.oldX, this.oldY, this.x, this.y) // 画直线
           let distance = Math.sqrt(Math.pow(this.x - this.oldX, 2) + Math.pow(this.y - this.oldY, 2))
+          console.log(this.lineType)
           // 直线
           if (this.lineType === 1) {
             this.sence.drawLine(this.oldX, this.oldY, this.x, this.y) // 画直线
@@ -601,79 +588,55 @@ export default {
 
  
           } 
-          // else if (this.lineType === 3) { // 贝塞尔曲线绘制
-          //   let taggleX = this.x
-          //   let taggleY = this.y
-          //   let {control1, control2} = this.getTrisection(this.oldX, this.oldY, taggleX, taggleY)
-          //   console.log(control1, control2)
-          //   // this.sence.drawLine(this.oldX, this.oldY, this.x, this.y) // 画直线
-          //   this.sence.drawArc(control1.x, control1.y, 5, 0, 2 * Math.PI)
-          //   this.sence.drawArc(control2.x, control2.y, 5, 0, 2 * Math.PI)
-          //   this.sence.drawbezierCurve(this.oldX, this.oldY, control1.x, control1.y, control2.x, control2.y, this.x, this.y)
-          //   this.operate.destory()
-          //   this.isLine = false
+          else if (this.lineType === 3) { // 贝塞尔曲线绘制
+            let taggleX = this.x
+            let taggleY = this.y
+            let {control1, control2} = this.getTrisection(this.oldX, this.oldY, taggleX, taggleY)
+            console.log(control1, control2)
+            // this.sence.drawLine(this.oldX, this.oldY, this.x, this.y) // 画直线
+            this.sence.drawArc(control1.x, control1.y, 3, 0, 2 * Math.PI)
+            this.sence.drawArc(control2.x, control2.y, 3, 0, 2 * Math.PI)
+            this.sence.drawbezierCurve(this.oldX, this.oldY, control1.x, control1.y, control2.x, control2.y, this.x, this.y)
+
+            this.siteObj.segmentInfos.push({segmentId: this.siteObj.segmentInfos.length, segmentName: this.startNodeName + '-' + this.endNodeName, type: 3, directionality: 0, startNodeId: this.startNode, endNodeId: this.endNode, rotAngle: 0, isClockwiseDirection: 0, control1X: control1.x, control1Y: control1.y, control2X: control2.x, control2Y: control2.y, length: distance.toFixed(0), isLink: 1, maxSpeed: 300, miscellaneous: ''})
+            // this.bezierArr.push({startPoint: {x1: this.oldX, y1: this.oldY}, endPoint: {x2: this.x, y2: this.y}, control1: {cx1: control1.x, cy1: control1.y}, control2: {cx2: control2.x, cy2: control2.y}})
+
+
+            // this.operate.destory()
+            // this.isLine = false
             
-          //   // eslint-disable-next-line complexity
-          //   this.canvas.onmousedown = e => {
-          //     this.getCoor(e)
-          //     if (this.x >= control1.x - 5 && this.x <= control1.x + 5 && this.y >= control1.y - 5 && this.y <= control1.y + 5) {
-          //       this.canvas.onmousemove = e => {
-          //         this.getCoor(e)
-          //         control1.x = this.x
-          //         control1.y = this.y
-          //         this.canvas.onmouseup = e => {
-          //           this.sence.drawbezierCurve(this.oldX, this.oldY, control1.x, control1.y, control2.x, control2.y, taggleX, taggleY)
-          //           this.sence.drawArc(control1.x, control1.y, 5, 0, 2 * Math.PI)
-          //           this.sence.drawArc(control2.x, control2.y, 5, 0, 2 * Math.PI)
-          //           console.log(control1, control2)
-          //         }
-          //       }
-          //     }
-          //     if (this.x >= control2.x - 5 && this.x <= control2.x + 5 && this.y >= control2.y - 5 && this.y <= control2.y + 5) {
-          //       this.canvas.onmousemove = e => {
-          //         this.getCoor(e)
-          //         control2.x = this.x
-          //         control2.y = this.y
-          //         this.canvas.onmouseup = e => {
-          //           this.sence.drawbezierCurve(this.oldX, this.oldY, control1.x, control1.y, control2.x, control2.y, taggleX, taggleY)
-          //           this.sence.drawArc(control1.x, control1.y, 5, 0, 2 * Math.PI)
-          //           this.sence.drawArc(control2.x, control2.y, 5, 0, 2 * Math.PI)
-          //           console.log(control1, control2)
-          //         }
-          //       }
-          //     }
-          //     // if ((this.x >= control1.x - 5 && this.x <= control1.x + 5 && this.y >= control1.y - 5 && this.y <= control1.y + 5) || (this.x >= control2.x - 5 && this.x <= control2.x + 5 && this.y >= control2.y - 5 && this.y <= control2.y + 5)){
-          //     //   if (this.x >= control1.x - 5 && this.x <= control1.x + 5 && this.y >= control1.y - 5 && this.y <= control1.y + 5) {
-                  
-          //     //   }
-          //     //   if (this.x >= control2.x - 5 && this.x <= control2.x + 5 && this.y >= control2.y - 5 && this.y <= control2.y + 5) {
-          //     //     control = control2
-          //     //   }
-          //     //   // this.getCoor(e)
-          //     //   this.canvas.onmousemove = e => {
-          //     //     if (this.x >= control1.x - 5 && this.x <= control1.x + 5 && this.y >= control1.y - 5 && this.y <= control1.y + 5) {
-          //     //       this.getCoor(e)
-          //     //       control1.x = this.x
-          //     //       control1.y = this.y
-          //     //     }
-          //     //     if (this.x >= control2.x - 5 && this.x <= control2.x + 5 && this.y >= control2.y - 5 && this.y <= control2.y + 5) {
-          //     //       this.getCoor(e)
-          //     //       control2.x = this.x
-          //     //       control2.y = this.y
-          //     //     }
-          //     //     // this.getCoor(e)
-          //     //     // Math.min(Math.abs(this.x - control1.x), Math.abs(this.x - control2.x))
-          //     //     // control1.x = this.x
-          //     //     // control1.y = this.y
-          //     //     this.canvas.onmouseup = e => {
-          //     //       this.sence.drawbezierCurve(this.oldX, this.oldY, control1.x, control1.y, control2.x, control2.y, taggleX, taggleY)
-          //     //       this.sence.drawArc(control1.x, control1.y, 5, 0, 2 * Math.PI)
-          //     //       this.sence.drawArc(control2.x, control2.y, 5, 0, 2 * Math.PI)
-          //     //     }
-          //     //   }
-          //     // }
-          //   }
-          // }
+            // eslint-disable-next-line complexity
+            // this.canvas.onmousedown = e => {
+            //   this.getCoor(e)
+            //   if (this.x >= control1.x - 5 && this.x <= control1.x + 5 && this.y >= control1.y - 5 && this.y <= control1.y + 5) {
+            //     this.canvas.onmousemove = e => {
+            //       this.getCoor(e)
+            //       control1.x = this.x
+            //       control1.y = this.y
+            //       this.canvas.onmouseup = e => {
+            //         // this.sence.drawbezierCurve(this.oldX, this.oldY, control1.x, control1.y, control2.x, control2.y, taggleX, taggleY)
+            //         this.sence.drawQuadratic(this.oldX, this.oldY, control1.x, control1.y, taggleX, taggleY)
+            //         this.sence.drawArc(control1.x, control1.y, 5, 0, 2 * Math.PI)
+            //         this.sence.drawArc(control2.x, control2.y, 5, 0, 2 * Math.PI)
+            //         console.log(control1, control2)
+            //       }
+            //     }
+            //   }
+            //   if (this.x >= control2.x - 5 && this.x <= control2.x + 5 && this.y >= control2.y - 5 && this.y <= control2.y + 5) {
+            //     this.canvas.onmousemove = e => {
+            //       this.getCoor(e)
+            //       control2.x = this.x
+            //       control2.y = this.y
+            //       this.canvas.onmouseup = e => {
+            //         this.sence.drawbezierCurve(this.oldX, this.oldY, control1.x, control1.y, control2.x, control2.y, taggleX, taggleY)
+            //         this.sence.drawArc(control1.x, control1.y, 5, 0, 2 * Math.PI)
+            //         this.sence.drawArc(control2.x, control2.y, 5, 0, 2 * Math.PI)
+            //         console.log(control1, control2)
+            //       }
+            //     }
+            //   }
+            // }
+          }
           
         } else {
           this.$message({
@@ -715,7 +678,7 @@ export default {
       let distance = Math.sqrt(Math.pow(x - oldX, 2) + Math.pow(y - oldY, 2))
       let angle = CentralAngle / 2
       let r = distance / 2 / Math.sin(angle * Math.PI / 180)
-      console.log(r)
+      // console.log(r)
       // 弧长
       this.arcLength = angle * Math.PI * r / 180
       // 两点间的x轴夹角弧度
@@ -731,7 +694,7 @@ export default {
       val1['y'] = oldY + Math.round(r * Math.sin((xAngle + 90 - angle) * 2 * Math.PI / 360))
       val2['x'] = oldX + Math.round(r * Math.cos((xAngle - (90 - angle)) * 2 * Math.PI / 360))
       val2['y'] = oldY + Math.round(r * Math.sin((xAngle - (90 - angle)) * 2 * Math.PI / 360))
-      console.log(val2)
+      // console.log(val2)
       if (clockwise) {
         val = Object.assign({}, val2)
         // let endAngle = 2 * Math.PI - Math.atan2(y - val2.y, x - val2.x)
@@ -751,6 +714,7 @@ export default {
       this.arcArr.push({r, val, line1: {startPoint: {x: oldX, y: oldY}, endPoint: {x, y}}})
     },
 
+    // 判断是否选择了直线
     // eslint-disable-next-line complexity
     selectLine() {
       // this.getCoor(event)
@@ -789,7 +753,7 @@ export default {
           this.disabledEdit = true // 点击站点后可以进行编辑
           this.megmentInfo = Object.assign({}, segmentConfig.line, segmentInfoArr[i])
           this.lineType = 1
-          console.log(this.megmentInfo)
+          // console.log(this.megmentInfo)
           // segmentInfoArr[i].flag = 1
           // this.init()
           // delete segmentInfoArr[i].flag
@@ -805,6 +769,7 @@ export default {
           this.showMegmentInfo = true
           this.disabledEdit = true // 点击站点后可以进行编辑
           this.megmentInfo = Object.assign({}, segmentConfig.line, segmentInfoArr[i])
+          console.log(this.megmentInfo)
           this.lineType = 1
           // segmentInfoArr[i].flag = 1
           // this.init()
@@ -833,8 +798,8 @@ export default {
             this.showMegmentInfo = true
             this.disabledEdit = true // 点击站点后可以进行编辑
             this.megmentInfo = Object.assign({}, segmentConfig.line, segmentInfoArr[i], {directionality: segmentInfoArr[i].directionality === 1 ? true : false})
-            this.lineType = 1
-            // console.log(this.megmentInfo)
+            this.lineType = this.megmentInfo.type
+            console.log(this.megmentInfo)
             // flag = 1; // 1 - 点中
             // segmentInfoArr[i].flag = 1
             // console.log(segmentInfoArr[i])
@@ -924,9 +889,54 @@ export default {
       return a < b && b < c || c < b && b < a;
     },
 
+    // 贝塞尔曲线选择
+    selectBezier() {
+      const offsetY = 5
+      const offsetX = 5
+      let X = this.x
+      // eslint-disable-next-line complexity
+      this.bezierArr.forEach(item => {
+        let x1 = item.startPoint.x1
+        let x2 = item.control1.cx1
+        let x3 = item.control2.cx2
+        let x4 = item.endPoint.x2
+        const tsx = getBezierT(x1, x2, x3, x4, X)
+        for (let x = 0; x < 3; x++) {
+          if (tsx[x] <= 1 && tsx[x] >= 0) {
+            const ny = getThreeBezierPoint(tsx[x], item.startPoint, item.control1, item.control2, item.endPoint)
+            if (Math.abs(ny[1] - this.y) < offsetY) {
+              let segmentArr = this.getSegmentCoor()
+              console.log(segmentArr)
+              let segItemInfo = segmentArr.filter(seg => seg.startX === item.startPoint.x1 && seg.startY === item.startPoint.y1 && seg.endX === item.endPoint.x2 && seg.endY === item.endPoint.y2 && seg.type === 3)
+              this.showMegmentInfo = true
+              this.disabledEdit = true // 点击站点后可以进行编辑
+              this.lineType = 3
+              this.megmentInfo = Object.assign({}, segmentConfig.quaLine, segItemInfo[0], {directionality: segItemInfo[0].directionality === 1 ? true : false})
+              // this.sence.drawArc(segItemInfo[0].control1X, segItemInfo[0].control1Y, 3, 0, 2 * Math.PI)
+              // this.sence.drawArc(segItemInfo[0].control2X, segItemInfo[0].control2Y, 3, 0, 2 * Math.PI)
+              
+            }
+          }
+        }
+
+         // 如果上述没有结果，则用 y 求出对应的 t，再用 t 求出对应的 x，与 offsetX 进行匹配
+        const tsy = getBezierT(item.startPoint.y1, item.control1.cy1, item.control2.cy2, item.endPoint.y2, offsetY)
+        for (let y = 0; y < 3; y++) {
+          if (tsy[y] <= 1 && tsy[y] >= 0) {
+            const nx = getThreeBezierPoint(tsy[y], item.startPoint, item.control1, item.control2, item.endPoint)
+            if (Math.abs(nx[0] - this.x) < offsetX) {
+              return 22222
+            }
+          }
+  }
+
+        
+      })
+    },
+
     onClick(event) {
       this.getCoor(event)
-      console.log(this.x, this.y)
+      // console.log(this.x, this.y)
       let arr = [...this.siteObj.nodes, ...this.siteObj.magPoints, ...this.siteObj.actionPoints]
       if (!this.addP) {
         // console.log(this.ctx.isPointInPath(this.x, this.y))
@@ -971,6 +981,7 @@ export default {
         })
         this.selectLine()
         this.selectArcLine()
+        this.selectBezier()
       }
       
     }
@@ -1002,8 +1013,12 @@ export default {
         width: 1000px;
         height: 650px;
         overflow: hidden;
-        background-color: #fff;
+        background-color: rgb(240, 242, 245);
         text-align: left;
+        #canvas {
+          background-color: rgb(240, 242, 245);
+          border: 1px solid #ccc8c8;
+        }
       }
 
       #coor {
