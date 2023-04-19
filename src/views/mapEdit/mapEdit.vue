@@ -45,11 +45,11 @@
 import Operate from '../separateInstall/operate'
 import drawSence from '@/views/separateInstall/path'
 import {getBezierT, getThreeBezierPoint} from './bezier'
+import {mapinfoApi, getmapApi} from '@/service/api'
 import ToorBar from '@/components/toor-bar/toor-bar.vue'
 import Dialog from './cpns/dialog.vue'
 import SiteForm from './cpns/siteForm.vue'
 import SegmentForm from './cpns/segmentForm.vue'
-import {mapinfoApi, getmapApi} from '@/service/api'
 import formConfig from '@/assets/data/siteConfig.json'
 import segmentConfig from '@/assets/data/segmentConfig.json'
 export default {
@@ -169,8 +169,6 @@ export default {
 
             this.bezierArr.push({startPoint: {x1: item.startX, y1: item.startY}, endPoint: {x2: item.endX, y2: item.endY}, control1: {cx1: item.control1X, cy1: item.control1Y}, control2: {cx2: item.control2X, cy2: item.control2Y}})
           }
-
-
         })
       }
     },
@@ -184,18 +182,47 @@ export default {
       this.disabledSave = true
       this.canvas.addEventListener('mousedown', this.onMousedown)
       // 如果是编辑贝塞尔曲线，可以在画布上更改控制点位置
-      // if (this.megmentInfo.type === 3) {
-      //   this.sence.drawArc(this.megmentInfo.control1X, this.megmentInfo.control1Y, 5, 0, 2 * Math.PI)
-      //   this.sence.drawArc(this.megmentInfo.control2X, this.megmentInfo.control2Y, 5, 0, 2 * Math.PI)
-      //   if (this.x >= this.megmentInfo.control1X - 5 && this.x <= this.megmentInfo.control1X + 5 && this.y >= this.megmentInfo.control1Y - 5 && this.y <= this.megmentInfo.control1Y + 5) {
-      //     this.canvas.addEventListener('mousedown', this.onQuadratic)
-      //   }
-        
-      // }
+      if (this.lineType === 3) {
+        this.sence.drawArc(this.megmentInfo.control1X, this.megmentInfo.control1Y, 3, 0, 2 * Math.PI)
+        this.sence.drawArc(this.megmentInfo.control2X, this.megmentInfo.control2Y, 3, 0, 2 * Math.PI)
+        this.canvas.addEventListener('mousedown', this.onQuadratic)
+
+        // this.canvas.onmousedown = e => this.onQuadratic(e)
+      }
     },
 
-    onQuadratic() {
-      console.log('hhh')
+    onQuadratic(e) {
+      this.getCoor1(e)
+      if (this.x >= this.megmentInfo.control1X - 5 && this.x <= this.megmentInfo.control1X + 5 && this.y >= this.megmentInfo.control1Y - 5 && this.y <= this.megmentInfo.control1Y + 5) {
+        this.canvas.removeEventListener('mouseup', this.onQuadraticUp2)
+        this.canvas.addEventListener('mouseup', this.onQuadraticUp1)
+      }
+
+      if (this.x >= this.megmentInfo.control2X - 5 && this.x <= this.megmentInfo.control2X + 5 && this.y >= this.megmentInfo.control2Y - 5 && this.y <= this.megmentInfo.control2Y + 5) {
+        this.canvas.removeEventListener('mouseup', this.onQuadraticUp1)
+        this.canvas.addEventListener('mouseup', this.onQuadraticUp2)
+      }
+    },
+    onQuadraticUp1(e) {
+      this.getCoor1(e)
+      this.megmentInfo.control1X = this.x
+      this.megmentInfo.control1Y = this.y
+      // this.sence.drawbezierCurve(this.oldX, this.oldY, control1.x, control1.y, control2.x, control2.y, taggleX, taggleY)
+      this.sence.drawbezierCurve(this.megmentInfo.startX, this.megmentInfo.startY, this.megmentInfo.control1X, this.megmentInfo.control1Y, this.megmentInfo.control2X, this.megmentInfo.control2Y, this.megmentInfo.endX, this.megmentInfo.endY)
+      this.sence.drawArc(this.megmentInfo.control1X, this.megmentInfo.control1Y, 3, 0, 2 * Math.PI)
+      this.sence.drawArc(this.megmentInfo.control2X, this.megmentInfo.control2Y, 3, 0, 2 * Math.PI)
+      this.x = this.y = null
+    },
+
+    onQuadraticUp2(e) {
+      this.getCoor1(e)
+      this.megmentInfo.control2X = this.x
+      this.megmentInfo.control2Y = this.y
+      // this.sence.drawbezierCurve(this.oldX, this.oldY, control1.x, control1.y, control2.x, control2.y, taggleX, taggleY)
+      this.sence.drawbezierCurve(this.megmentInfo.startX, this.megmentInfo.startY, this.megmentInfo.control1X, this.megmentInfo.control1Y, this.megmentInfo.control2X, this.megmentInfo.control2Y, this.megmentInfo.endX, this.megmentInfo.endY)
+      this.sence.drawArc(this.megmentInfo.control1X, this.megmentInfo.control1Y, 3, 0, 2 * Math.PI)
+      this.sence.drawArc(this.megmentInfo.control2X, this.megmentInfo.control2Y, 3, 0, 2 * Math.PI)
+      this.x = this.y = null
     },
 
     // // 批量增加
@@ -263,7 +290,7 @@ export default {
           this.canvas.removeEventListener('mousemove', this.onMousemove)
           this.canvas.removeEventListener('mouseup', this.onMouseup)
         }
-        console.log(this.lineType)
+        // console.log(this.lineType)
       }
       else if(data.type === -1) {
         this.isGrid = !this.isGrid
@@ -304,6 +331,16 @@ export default {
       this.y = height / 2 - (event.clientY - getBoundingClientRect.top) //当前位置相对于原点的y轴坐标q
     },
 
+    // 获取缩放后的坐标
+    getCoor1(e) {
+      this.getCoor(e)
+      let scale = this.operate.animation.scale // 鼠标滚动的缩放比例
+      let scaleX = (this.canvas.width * scale - this.canvas.width) / 2 // 缩放后x轴原点
+      let scaleY = (this.canvas.height * scale - this.canvas.height) / 2 // 缩放后y轴原点
+     this.x = (this.x - scaleX) / scale
+     this.y = (this.y + scaleY) / scale
+    },
+
     // 获取线段起始坐标与结束坐标
     getSegmentCoor() {
       let arr = []
@@ -338,7 +375,7 @@ export default {
         this.toggleName()
       }
       } else { // 编辑状态下修改此条数据
-        console.log(this.addInfor)
+        // console.log(this.addInfor)
         if (this.pointTypes === 1) {
           this.siteObj.nodes.forEach(item => {
             if (item.nodeId === this.siteInfor.nodeId) {
@@ -371,7 +408,7 @@ export default {
             }
             return item
           })
-          console.log(this.siteObj.segmentInfos)
+          // console.log(this.siteObj.segmentInfos)
         }
         if (this.lineType === 2) {
           this.siteObj.segmentInfos = this.siteObj.segmentInfos.map(item =>{
@@ -380,7 +417,7 @@ export default {
             }
             return item
           })
-          console.log(this.siteObj.segmentInfos)
+          // console.log(this.siteObj.segmentInfos)
         }
         if (this.lineType === 3) {
           this.siteObj.segmentInfos = this.siteObj.segmentInfos.map(item =>{
@@ -389,7 +426,10 @@ export default {
             }
             return item
           })
-          console.log(this.siteObj.segmentInfos)
+          this.canvas.removeEventListener('mousedown', this.onQuadratic)
+          this.canvas.removeEventListener('mouseup', this.onQuadraticUp1)
+          this.canvas.removeEventListener('mouseup', this.onQuadraticUp2)
+          this.lineType = 0
         }
         this.isEdit = false
         this.operate.reset()
@@ -411,11 +451,7 @@ export default {
       const color = { 6: 'red', 7: 'blue', 8: 'green'}
 
       if (this.addP) { 
-        let scale = this.operate.animation.scale // 鼠标滚动的缩放比例
-        let scaleX = (this.canvas.width * scale - this.canvas.width) / 2 // 缩放后x轴原点
-        let scaleY = (this.canvas.height * scale - this.canvas.height) / 2 // 缩放后y轴原点
-        this.x = (this.x - scaleX) / scale
-        this.y = (this.y + scaleY) / scale
+        this.getCoor1(event)
         this.addInfor.x = this.x
         this.addInfor.y = this.y
         this.addInfor.id = this.pointTypes === 1 ? this.siteObj.nodes.length : this.pointTypes === 6 ? this.siteObj.nodes.length : this.pointTypes === 7 ? this.siteObj.magPoints.length : this.pointTypes === 8 ? this.siteObj.actionPoints.length : 0
@@ -430,7 +466,7 @@ export default {
         } else {
           this.sence.drawPoint(this.x,this.y, 3, color[data.type])
         }
-        console.log(this.siteObj)
+        // console.log(this.siteObj)
         this.canvas.style.cursor = 'auto'
         this.addP = false
         this.isAdd = false // 在点击确定时变成true
@@ -448,7 +484,7 @@ export default {
         this.canvas.style.cursor = 'auto'
         this.operate.reset()
         // this.canvas.addEventListener('mousedown', this.operate.onMousedown1)
-        console.log([this.x, this.y])
+        // console.log([this.x, this.y])
       } else {return}
     },
 
@@ -459,6 +495,11 @@ export default {
     // 确认批量增加
     dialogDefine(data) {
       let x, y
+      let scale = this.operate.animation.scale // 鼠标滚动的缩放比例
+      let scaleX = (this.canvas.width * scale - this.canvas.width) / 2 // 缩放后x轴原点
+      let scaleY = (this.canvas.height * scale - this.canvas.height) / 2 // 缩放后y轴原点
+      this.x = (this.x - scaleX) / scale
+      this.y = (this.y + scaleY) / scale
       this.dialogFormVisible = false
       for(let i = 0; i < Number(data.num); i++) {
         switch(data.rankValue) {
@@ -542,11 +583,11 @@ export default {
         this.siteInfor.x = this.x
         this.siteInfor.y = this.y
 
-        let innerDiv = document.querySelector('#coor')
-        innerDiv.style.display = 'block'
-        innerDiv.innerHTML = `(${this.x}, ${this.y})`
-        innerDiv.style.left = this.x + this.canvas.width / 2 + 'px'
-        innerDiv.style.top = this.canvas.height / 2 - this.y - 50 + 'px'
+        // let innerDiv = document.querySelector('#coor')
+        // innerDiv.style.display = 'block'
+        // innerDiv.innerHTML = `(${this.x}, ${this.y})`
+        // innerDiv.style.left = this.x + this.canvas.width / 2 + 'px'
+        // innerDiv.style.top = this.canvas.height / 2 - this.y - 50 + 'px'
       }
     },
 
@@ -572,7 +613,7 @@ export default {
         if ((this.startNode || this.startNode === 0) && (this.endNode || this.endNode === 0)) { // 画线时选择的两个端点必须是点位
           // this.sence.drawLine(this.oldX, this.oldY, this.x, this.y) // 画直线
           let distance = Math.sqrt(Math.pow(this.x - this.oldX, 2) + Math.pow(this.y - this.oldY, 2))
-          console.log(this.lineType)
+          // console.log(this.lineType)
           // 直线
           if (this.lineType === 1) {
             this.sence.drawLine(this.oldX, this.oldY, this.x, this.y) // 画直线
@@ -592,7 +633,7 @@ export default {
             let taggleX = this.x
             let taggleY = this.y
             let {control1, control2} = this.getTrisection(this.oldX, this.oldY, taggleX, taggleY)
-            console.log(control1, control2)
+            // console.log(control1, control2)
             // this.sence.drawLine(this.oldX, this.oldY, this.x, this.y) // 画直线
             this.sence.drawArc(control1.x, control1.y, 3, 0, 2 * Math.PI)
             this.sence.drawArc(control2.x, control2.y, 3, 0, 2 * Math.PI)
@@ -609,18 +650,7 @@ export default {
             // this.canvas.onmousedown = e => {
             //   this.getCoor(e)
             //   if (this.x >= control1.x - 5 && this.x <= control1.x + 5 && this.y >= control1.y - 5 && this.y <= control1.y + 5) {
-            //     this.canvas.onmousemove = e => {
-            //       this.getCoor(e)
-            //       control1.x = this.x
-            //       control1.y = this.y
-            //       this.canvas.onmouseup = e => {
-            //         // this.sence.drawbezierCurve(this.oldX, this.oldY, control1.x, control1.y, control2.x, control2.y, taggleX, taggleY)
-            //         this.sence.drawQuadratic(this.oldX, this.oldY, control1.x, control1.y, taggleX, taggleY)
-            //         this.sence.drawArc(control1.x, control1.y, 5, 0, 2 * Math.PI)
-            //         this.sence.drawArc(control2.x, control2.y, 5, 0, 2 * Math.PI)
-            //         console.log(control1, control2)
-            //       }
-            //     }
+            //     z
             //   }
             //   if (this.x >= control2.x - 5 && this.x <= control2.x + 5 && this.y >= control2.y - 5 && this.y <= control2.y + 5) {
             //     this.canvas.onmousemove = e => {
@@ -725,7 +755,7 @@ export default {
       let py = (this.y + scaleY) / scale
       // let px = this.x
       // let py = this.y
-      const offset = 5 // 可接受（偏移）范围
+      const offset = 8 // 可接受（偏移）范围
       let segmentInfos = this.siteObj.segmentInfos
       let segmentCoorArr = this.getSegmentCoor()
       let segmentInfoArr = segmentInfos.map((item, index) => {
@@ -769,7 +799,7 @@ export default {
           this.showMegmentInfo = true
           this.disabledEdit = true // 点击站点后可以进行编辑
           this.megmentInfo = Object.assign({}, segmentConfig.line, segmentInfoArr[i])
-          console.log(this.megmentInfo)
+          // console.log(this.megmentInfo)
           this.lineType = 1
           // segmentInfoArr[i].flag = 1
           // this.init()
@@ -799,7 +829,7 @@ export default {
             this.disabledEdit = true // 点击站点后可以进行编辑
             this.megmentInfo = Object.assign({}, segmentConfig.line, segmentInfoArr[i], {directionality: segmentInfoArr[i].directionality === 1 ? true : false})
             this.lineType = this.megmentInfo.type
-            console.log(this.megmentInfo)
+            // console.log(this.megmentInfo)
             // flag = 1; // 1 - 点中
             // segmentInfoArr[i].flag = 1
             // console.log(segmentInfoArr[i])
@@ -835,7 +865,7 @@ export default {
         // 如果点击了弧线： 1：点与圆心点距离等于半径；2：点与圆心的直线和两个端点的直线相交
         if (isIntersect && distance - item.r >= -10 && distance - item.r <= 10) {
           let segmentArr = this.getSegmentCoor()
-          console.log(segmentArr)
+          // console.log(segmentArr)
           let segItemInfo = segmentArr.filter(seg => seg.startX === item.line1.startPoint.x && seg.startY === item.line1.startPoint.y && seg.endX === item.line1.endPoint.x && seg.endY === item.line1.endPoint.y)
           this.showMegmentInfo = true
           this.disabledEdit = true // 点击站点后可以进行编辑
@@ -891,9 +921,14 @@ export default {
 
     // 贝塞尔曲线选择
     selectBezier() {
+      let scale = this.operate.animation.scale // 鼠标滚动的缩放比例
+      let scaleX = (this.canvas.width * scale - this.canvas.width) / 2 // 缩放后x轴原点
+      let scaleY = (this.canvas.height * scale - this.canvas.height) / 2 // 缩放后y轴原点
+      let px = (this.x - scaleX) / scale
+      let py = (this.y + scaleY) / scale
       const offsetY = 5
       const offsetX = 5
-      let X = this.x
+      let X = px
       // eslint-disable-next-line complexity
       this.bezierArr.forEach(item => {
         let x1 = item.startPoint.x1
@@ -904,9 +939,9 @@ export default {
         for (let x = 0; x < 3; x++) {
           if (tsx[x] <= 1 && tsx[x] >= 0) {
             const ny = getThreeBezierPoint(tsx[x], item.startPoint, item.control1, item.control2, item.endPoint)
-            if (Math.abs(ny[1] - this.y) < offsetY) {
+            if (Math.abs(ny[1] - py) < offsetY) {
               let segmentArr = this.getSegmentCoor()
-              console.log(segmentArr)
+              // console.log(segmentArr)
               let segItemInfo = segmentArr.filter(seg => seg.startX === item.startPoint.x1 && seg.startY === item.startPoint.y1 && seg.endX === item.endPoint.x2 && seg.endY === item.endPoint.y2 && seg.type === 3)
               this.showMegmentInfo = true
               this.disabledEdit = true // 点击站点后可以进行编辑
@@ -918,7 +953,6 @@ export default {
             }
           }
         }
-
          // 如果上述没有结果，则用 y 求出对应的 t，再用 t 求出对应的 x，与 offsetX 进行匹配
         const tsy = getBezierT(item.startPoint.y1, item.control1.cy1, item.control2.cy2, item.endPoint.y2, offsetY)
         for (let y = 0; y < 3; y++) {
@@ -935,6 +969,7 @@ export default {
     },
 
     onClick(event) {
+      // this.canvas.removeEventListener('mousedown', this.onQuadratic)
       this.getCoor(event)
       // console.log(this.x, this.y)
       let arr = [...this.siteObj.nodes, ...this.siteObj.magPoints, ...this.siteObj.actionPoints]
